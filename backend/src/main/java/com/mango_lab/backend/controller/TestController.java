@@ -1,20 +1,22 @@
 package com.mango_lab.backend.controller;
 
+import com.mango_lab.backend.entity.MyEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.*;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -29,6 +31,9 @@ public class TestController {
 
     @Value("${s3.bucket}")
     private String bucket;
+
+    @Autowired
+    private com.mango_lab.backend.repository.MyRepository myRepository;
 
     @GetMapping("/status/db")
     public ResponseEntity<Map<String, Object>> getDatabaseStatus() {
@@ -63,5 +68,36 @@ public class TestController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
         }
     }
+
+    @PostMapping("/db/insert")
+    public ResponseEntity<Map<String, String>> insert() {
+        MyEntity entity = new MyEntity();
+        entity.setValue("Test " + LocalDateTime.now());
+        myRepository.save(entity);
+        return ResponseEntity.ok(Map.of("status", "ok", "message", "Entity inserted successfully"));
+    }
+
+    @PostMapping("/storage/upload")
+    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+        String filename = "test-upload/" + file.getOriginalFilename();
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(filename)
+                        .contentType(file.getContentType()).build(),
+                software.amazon.awssdk.core.sync.RequestBody.fromBytes(file.getBytes())
+        );
+        return ResponseEntity.ok(Map.of("status", "ok", "message", "File uploaded successfully", "filename", filename));
+    }
+
+    @GetMapping("/storage/list")
+    public ResponseEntity<List<String>> listFiles() {
+        ListObjectsV2Response objects = s3Client.listObjectsV2(
+                ListObjectsV2Request.builder().bucket(bucket).prefix("test-upload/").build()
+        );
+        List<String> fileNames = objects.contents().stream().map(S3Object::key).toList();
+        return ResponseEntity.ok(fileNames);
+    }
+
 
 }

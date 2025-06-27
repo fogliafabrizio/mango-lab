@@ -39,4 +39,21 @@ export class TestService {
   checkStorage(): Observable<any> {
     return this._http.get(this.apiUrls[this.currentEnv].storage);
   }
+
+  inserisciNelDatabase(): Observable<any> {
+    return this._http.post('http://localhost:8080/test/db/insert', {});
+  }
+
+  uploadFile(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    return this._http.post(
+      'http://localhost:8080/test/storage/upload',
+      formData
+    );
+  }
+
+  listaFile(): Observable<any> {
+    return this._http.get('http://localhost:8080/test/storage/list');
+  }
 }

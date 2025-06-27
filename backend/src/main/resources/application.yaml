@@ -17,6 +17,12 @@ spring:
       hibernate:
         format_sql: true
 
+  servlet:
+    multipart:
+        max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:10MB}
+        max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:20MB}
+        resolve-lazily: true
+
 frontend:
   domain: ${FRONTEND_DOMAIN:http://localhost:4200}
 

@@ -1,20 +1,25 @@
 <div class="status-container">
+  <h2>Status connessioni:</h2>
   <div>
-    <span>Connessione al backend: </span>
-    <span [class.green]="backendStatus" [class.red]="!backendStatus"
-      >● {{ backendStatus ? "OK" : "NO" }}</span
-    >
+    <span>Backend: </span
+    ><span [class.green]="backendStatus" [class.red]="!backendStatus">●</span>
   </div>
   <div>
-    <span>Connessione al database: </span>
-    <span [class.green]="databaseStatus" [class.red]="!databaseStatus"
-      >● {{ databaseStatus ? "OK" : "NO" }}</span
-    >
+    <span>Database: </span
+    ><span [class.green]="databaseStatus" [class.red]="!databaseStatus">●</span>
   </div>
   <div>
-    <span>Connessione allo storage: </span>
-    <span [class.green]="storageStatus" [class.red]="!storageStatus"
-      >● {{ storageStatus ? "OK" : "NO" }}</span
-    >
+    <span>Storage: </span
+    ><span [class.green]="storageStatus" [class.red]="!storageStatus">●</span>
   </div>
+</div>
+
+<hr />
+
+<div class="actions">
+  <h2>Azioni di test:</h2>
+  <button (click)="inserisciNelDatabase()">➕ Inserisci record</button>
+  <input type="file" (change)="uploadFile($event)" />
+  <button (click)="eliminaFile()">🗑️ Elimina file di test</button>
+  <button (click)="listaFile()">📂 Lista file</button>
 </div>
