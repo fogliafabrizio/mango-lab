@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true">
 
-    <!-- Proprietà iniettate da Spring/env -->
-    <property name="LOKI_ENDPOINT" value="${LOKI_ENDPOINT}" />
-    <property name="LOKI_API_KEY"  value="${LOKI_API_KEY}"  />
-    <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
+    <!-- ===== Proprietà configurabili via ENV o application.properties ===== -->
+    <property name="LOG_PATH"               value="${LOG_PATH:-logs/app.log}"/>
+    <property name="LOG_ARCHIVE_PATTERN"   value="${LOG_ARCHIVE_PATTERN:-logs/app.%d{yyyy-MM-dd}.log.gz}"/>
+    <property name="LOG_MAX_HISTORY"       value="${LOG_MAX_HISTORY:-14}"/>
+    <property name="LOG_TOTAL_SIZE_CAP"    value="${LOG_TOTAL_SIZE_CAP:-500MB}"/>
+    <property name="LOG_PATTERN"           value="${LOG_PATTERN:-%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n}"/>
 
-    <!-- 1) Console appender con pattern colorato -->
+    <!-- ===== APPENDER CONSOLE (colorato) – sempre attivo ===== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <!-- %highlight colora il livello, %cyan colora il logger -->
             <pattern>
                 %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread]
                 %highlight(%-5level)
@@ -19,42 +20,65 @@
         </encoder>
     </appender>
 
-    <!-- 2) File appender con rollover giornaliero -->
+    <!-- ===== APPENDER FILE rolling giornaliero – usato in dev e prod ===== -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/app.log</file>
+        <file>${LOG_PATH}</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/app.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
+            <fileNamePattern>${LOG_ARCHIVE_PATTERN}</fileNamePattern>
+            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>${LOG_PATTERN}</pattern>
         </encoder>
     </appender>
 
-    <!-- 3) Loki appender per shipping via HTTP -->
-    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-        <!-- batch configuration -->
-        <batchSize>16384</batchSize>
-        <batchWaitTimeout>2000</batchWaitTimeout>
+    <!-- ===== DEV profile: console + file plain-text ===== -->
+    <springProfile name="dev">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
 
-        <transport class="com.github.loki4j.logback.batch.Loki4jHttpBatchTransport">
-            <appendUri>${LOKI_ENDPOINT}</appendUri>
-            <headers>
-                <Authorization>Bearer ${LOKI_API_KEY}</Authorization>
-            </headers>
-        </transport>
+    <!-- ===== PROD profile: file JSON + (opzionale) async ===== -->
+    <springProfile name="prod">
+        <!-- Appender JSON per integrazione con collector esterni -->
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}.json</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}.%d{yyyy-MM-dd}.json.gz</fileNamePattern>
+                <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+                <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+            </rollingPolicy>
+            <!-- Richiede la dipendenza net.logstash.logback:logstash-logback-encoder -->
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp>
+                        <timeZone>UTC</timeZone>
+                    </timestamp>
+                    <logLevel/>
+                    <threadName/>
+                    <loggerName/>
+                    <message/>
+                    <stackTrace/>
+                    <mdc/>
+                </providers>
+            </encoder>
+        </appender>
 
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+        <!-- Wrapper asincrono (riduce impatto I/O) -->
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="JSON_FILE"/>
+            <queueSize>5000</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
 
-    <!-- 4) Root logger: INFO in console, file e Loki -->
-    <root level="INFO">
-        <appender-ref ref="CONSOLE" />
-        <appender-ref ref="FILE" />
-        <appender-ref ref="LOKI"  />
-    </root>
+        <root level="INFO">
+            <!-- In prod NON mandiamo in console colorata (se preferisci puoi abilitarla) -->
+            <appender-ref ref="ASYNC_JSON"/>
+        </root>
+    </springProfile>
 
 </configuration>
