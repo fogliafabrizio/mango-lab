@@ -92,23 +92,10 @@ jobs:
         docker tag  $REPO:$TAG $REPO:latest-snapshot
         docker push $REPO:latest-snapshot
 
-    - name: Build & push frontend image
-      if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
-      run: |
-        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-frontend
-        V=${{ steps.detect.outputs.frontend_version }}
-        SHA_SHORT=${GITHUB_SHA::7}
-
-        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
-
-        docker build -f frontend/Dockerfile -t $REPO:$TAG frontend
-        docker push  $REPO:$TAG
-
-        docker tag  $REPO:$TAG $REPO:latest-snapshot
-        docker push $REPO:latest-snapshot
     # ------------------
     # Build & Push Frontend
     # ------------------
+
     - name: Build & push frontend image
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
       run: |
@@ -116,13 +103,10 @@ jobs:
         V=${{ steps.detect.outputs.frontend_version }}
         SHA_SHORT=${GITHUB_SHA::7}
 
-        # 1) Tag snapshot basato sul commit
         TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
 
-        # build & push con quel tag
         docker build -f frontend/Dockerfile -t $REPO:$TAG frontend
         docker push  $REPO:$TAG
 
-        # 2) aggiorniamo sempre l’alias "latest-snapshot"
         docker tag  $REPO:$TAG $REPO:latest-snapshot
         docker push $REPO:latest-snapshot
