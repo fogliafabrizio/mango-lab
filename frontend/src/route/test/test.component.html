@@ -1,0 +1,20 @@
+<div class="status-container">
+  <div>
+    <span>Connessione al backend: </span>
+    <span [class.green]="backendStatus" [class.red]="!backendStatus"
+      >● {{ backendStatus ? "OK" : "NO" }}</span
+    >
+  </div>
+  <div>
+    <span>Connessione al database: </span>
+    <span [class.green]="databaseStatus" [class.red]="!databaseStatus"
+      >● {{ databaseStatus ? "OK" : "NO" }}</span
+    >
+  </div>
+  <div>
+    <span>Connessione allo storage: </span>
+    <span [class.green]="storageStatus" [class.red]="!storageStatus"
+      >● {{ storageStatus ? "OK" : "NO" }}</span
+    >
+  </div>
+</div>
