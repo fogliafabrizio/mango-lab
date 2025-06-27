@@ -15,11 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1) Checkout
     - uses: actions/checkout@v3
       name: Checkout repository
 
-    # 2) Setup Java & Maven
+    # Java (serve sempre per il backend)
     - uses: actions/setup-java@v3
       name: Setup Java 21
       with:
@@ -27,43 +26,35 @@ jobs:
         java-version: '21'
         cache: maven
 
-    # 3) Setup Node & NPM
-    - uses: actions/setup-node@v3
-      name: Setup Node.js 18
+    # Node (solo se c’è il frontend)
+    - name: Setup Node.js 18
+      if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
+      uses: actions/setup-node@v3
       with:
         node-version: '18'
         cache: npm
 
-    # 4) Rileva cosa c’è e estrai versioni
     - name: Detect backend/frontend & extract versions
       id: detect
       run: |
-        # Verifichiamo backend
         if [ -f pom.xml ] && [ -f Dockerfile ]; then
-          echo "backend_exists=true" >> $GITHUB_OUTPUT
-          BVER=$(xmllint --xpath "string(//project/version)" pom.xml)
-          echo "backend_version=$BVER"   >> $GITHUB_OUTPUT
+          echo "backend_exists=true"   >> $GITHUB_OUTPUT
+          echo "backend_version=$(xmllint --xpath 'string(//project/version)' pom.xml)" >> $GITHUB_OUTPUT
         else
-          echo "backend_exists=false"    >> $GITHUB_OUTPUT
-          echo "backend_version="        >> $GITHUB_OUTPUT
+          echo "backend_exists=false"  >> $GITHUB_OUTPUT
         fi
 
-        # Verifichiamo frontend
         if [ -f frontend/package.json ] && [ -f frontend/Dockerfile ]; then
-          echo "frontend_exists=true"    >> $GITHUB_OUTPUT
-          FVER=$(jq -r .version frontend/package.json)
-          echo "frontend_version=$FVER" >> $GITHUB_OUTPUT
+          echo "frontend_exists=true"  >> $GITHUB_OUTPUT
+          echo "frontend_version=$(jq -r .version frontend/package.json)" >> $GITHUB_OUTPUT
         else
-          echo "frontend_exists=false"   >> $GITHUB_OUTPUT
-          echo "frontend_version="       >> $GITHUB_OUTPUT
+          echo "frontend_exists=false" >> $GITHUB_OUTPUT
         fi
 
-    # 5) Test backend (solo se esiste)
     - name: Run backend tests
       if: ${{ steps.detect.outputs.backend_exists == 'true' }}
       run: mvn test --batch-mode
 
-    # 6) Test frontend (solo se esiste)
     - name: Run frontend tests
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
       run: |
@@ -71,7 +62,6 @@ jobs:
         npm ci
         npm test
 
-    # 7) Login a Docker Hub (se c’è almeno un’immagine da pushare)
     - name: Login to Docker Hub
       if: ${{ steps.detect.outputs.backend_exists == 'true' || steps.detect.outputs.frontend_exists == 'true' }}
       uses: docker/login-action@v2
@@ -79,22 +69,18 @@ jobs:
         username: ${{ env.DOCKERHUB_USERNAME }}
         password: ${{ env.DOCKERHUB_TOKEN }}
 
-    # 8) Build & push backend (se esiste)
     - name: Build & push backend image
       if: ${{ steps.detect.outputs.backend_exists == 'true' }}
       run: |
         TS=$(date +%Y%m%d%H%M%S)
         TAG=${{ steps.detect.outputs.backend_version }}-snapshot-${TS}
-        docker build -f Dockerfile \
-          -t ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG .
+        docker build -f Dockerfile -t ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG .
         docker push ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG
 
-    # 9) Build & push frontend (se esiste)
     - name: Build & push frontend image
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
       run: |
         TS=$(date +%Y%m%d%H%M%S)
         TAG=${{ steps.detect.outputs.frontend_version }}-snapshot-${TS}
-        docker build -f frontend/Dockerfile \
-          -t ${{ env.DOCKERHUB_USERNAME }}/frontend:$TAG frontend
+        docker build -f frontend/Dockerfile -t ${{ env.DOCKERHUB_USERNAME }}/frontend:$TAG frontend
         docker push ${{ env.DOCKERHUB_USERNAME }}/frontend:$TAG
