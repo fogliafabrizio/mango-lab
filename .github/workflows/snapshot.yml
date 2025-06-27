@@ -37,18 +37,22 @@ jobs:
     - name: Detect backend/frontend & extract versions
       id: detect
       run: |
-        if [ -f pom.xml ] && [ -f Dockerfile ]; then
+        # Backend in sotto-cartella
+        if [ -f backend/pom.xml ] && [ -f backend/Dockerfile ]; then
           echo "backend_exists=true"   >> $GITHUB_OUTPUT
-          echo "backend_version=$(xmllint --xpath 'string(//project/version)' pom.xml)" >> $GITHUB_OUTPUT
+          BVER=$(xmllint --xpath "string(//project/version)" backend/pom.xml)
+          echo "backend_version=$BVER" >> $GITHUB_OUTPUT
         else
           echo "backend_exists=false"  >> $GITHUB_OUTPUT
         fi
 
+        # Frontend (se esiste) rimane uguale
         if [ -f frontend/package.json ] && [ -f frontend/Dockerfile ]; then
-          echo "frontend_exists=true"  >> $GITHUB_OUTPUT
-          echo "frontend_version=$(jq -r .version frontend/package.json)" >> $GITHUB_OUTPUT
+          echo "frontend_exists=true"   >> $GITHUB_OUTPUT
+          FVER=$(jq -r .version frontend/package.json)
+          echo "frontend_version=$FVER" >> $GITHUB_OUTPUT
         else
-          echo "frontend_exists=false" >> $GITHUB_OUTPUT
+          echo "frontend_exists=false"  >> $GITHUB_OUTPUT
         fi
 
     - name: Run backend tests
@@ -74,8 +78,12 @@ jobs:
       run: |
         TS=$(date +%Y%m%d%H%M%S)
         TAG=${{ steps.detect.outputs.backend_version }}-snapshot-${TS}
-        docker build -f Dockerfile -t ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG .
+        docker build \
+          -f backend/Dockerfile \
+          -t ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG \
+          backend
         docker push ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG
+
 
     - name: Build & push frontend image
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
