@@ -13,13 +13,10 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
-    # 1) Checkout
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 2) Setup Java + cache Maven
     - name: Setup Java 21
       uses: actions/setup-java@v3
       with:
@@ -27,14 +24,12 @@ jobs:
         java-version: '21'
         cache: maven
 
-    # 3) Detect backend/frontend & extract versions
     - name: Detect backend/frontend & extract versions
       id: detect
       run: |
-        # — Backend —
+        # Backend
         if [[ -f backend/pom.xml && -f backend/Dockerfile ]]; then
           echo "backend_exists=true" >> $GITHUB_OUTPUT
-          # estrae project.version via Maven
           BVER=$(mvn -q -f backend/pom.xml \
             help:evaluate -Dexpression=project.version \
             -DforceStdout)
@@ -43,10 +38,9 @@ jobs:
           echo "backend_exists=false" >> $GITHUB_OUTPUT
         fi
 
-        # — Frontend —
+        # Frontend
         if [[ -f frontend/package.json && -f frontend/Dockerfile ]]; then
           echo "frontend_exists=true" >> $GITHUB_OUTPUT
-          # estrae "version" da package.json con grep|sed
           FVER=$(grep -m1 '"version"' frontend/package.json \
             | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"(.*)".*/\1/')
           echo "frontend_version=$FVER" >> $GITHUB_OUTPUT
@@ -54,17 +48,14 @@ jobs:
           echo "frontend_exists=false" >> $GITHUB_OUTPUT
         fi
 
-    # 4) Run backend tests
     - name: Run backend tests
       if: ${{ steps.detect.outputs.backend_exists == 'true' }}
       run: mvn -f backend/pom.xml test --batch-mode
 
-    # 5) Package backend
     - name: Package backend
       if: ${{ steps.detect.outputs.backend_exists == 'true' }}
       run: mvn -f backend/pom.xml clean package -DskipTests
 
-    # 6) Run frontend tests
     - name: Run frontend tests
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
       run: |
@@ -72,7 +63,6 @@ jobs:
         npm ci
         npm test
 
-    # 7) Login to Docker Hub
     - name: Login to Docker Hub
       if: ${{ steps.detect.outputs.backend_exists == 'true' || steps.detect.outputs.frontend_exists == 'true' }}
       uses: docker/login-action@v2
@@ -80,26 +70,59 @@ jobs:
         username: ${{ env.DOCKERHUB_USERNAME }}
         password: ${{ env.DOCKERHUB_TOKEN }}
 
-    # 8) Build & push backend image
+    # ------------------
+    # Build & Push Backend
+    # ------------------
+
     - name: Build & push backend image
       if: ${{ steps.detect.outputs.backend_exists == 'true' }}
       run: |
-        TS=$(date +%Y%m%d%H%M%S)
-        TAG=${{ steps.detect.outputs.backend_version }}-snapshot-${TS}
-        docker build \
-          -f backend/Dockerfile \
-          -t ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG \
-          backend
-        docker push ${{ env.DOCKERHUB_USERNAME }}/backend:$TAG
+        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-backend
+        V=${{ steps.detect.outputs.backend_version }}
+        # Prendiamo i primi 7 caratteri del commit SHA
+        SHA_SHORT=${GITHUB_SHA::7}
 
-    # 9) Build & push frontend image
+        # 1) Tag snapshot su SHA
+        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
+
+        docker build -f backend/Dockerfile -t $REPO:$TAG backend
+        docker push  $REPO:$TAG
+
+        # 2) aggiorniamo sempre l’alias "latest-snapshot"
+        docker tag  $REPO:$TAG $REPO:latest-snapshot
+        docker push $REPO:latest-snapshot
+
     - name: Build & push frontend image
       if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
       run: |
-        TS=$(date +%Y%m%d%H%M%S)
-        TAG=${{ steps.detect.outputs.frontend_version }}-snapshot-${TS}
-        docker build \
-          -f frontend/Dockerfile \
-          -t ${{ env.DOCKERHUB_USERNAME }}/frontend:$TAG \
-          frontend
-        docker push ${{ env.DOCKERHUB_USERNAME }}/frontend:$TAG
+        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-frontend
+        V=${{ steps.detect.outputs.frontend_version }}
+        SHA_SHORT=${GITHUB_SHA::7}
+
+        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
+
+        docker build -f frontend/Dockerfile -t $REPO:$TAG frontend
+        docker push  $REPO:$TAG
+
+        docker tag  $REPO:$TAG $REPO:latest-snapshot
+        docker push $REPO:latest-snapshot
+    # ------------------
+    # Build & Push Frontend
+    # ------------------
+    - name: Build & push frontend image
+      if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
+      run: |
+        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-frontend
+        V=${{ steps.detect.outputs.frontend_version }}
+        SHA_SHORT=${GITHUB_SHA::7}
+
+        # 1) Tag snapshot basato sul commit
+        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
+
+        # build & push con quel tag
+        docker build -f frontend/Dockerfile -t $REPO:$TAG frontend
+        docker push  $REPO:$TAG
+
+        # 2) aggiorniamo sempre l’alias "latest-snapshot"
+        docker tag  $REPO:$TAG $REPO:latest-snapshot
+        docker push $REPO:latest-snapshot
