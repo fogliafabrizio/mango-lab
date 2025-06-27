@@ -1,13 +1,10 @@
-# Stage 1: build
-FROM node:20-alpine AS builder
+# Fase 1: build Angular app
+FROM node:20 AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
 COPY . .
-RUN npm run build -- --configuration production
+RUN npm install && npm run build -- --configuration=production
 
-# Stage 2: serve
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist/frontend /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Fase 2: serve con Nginx
+FROM nginx:alpine
+COPY --from=builder /app/dist/mangolab-frontend /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
