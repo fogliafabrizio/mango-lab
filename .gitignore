@@ -121,3 +121,7 @@ dump.sql
 *.tmp
 *.temp
 *.pid
+
+# ==============================
+# Testing locale
+local
