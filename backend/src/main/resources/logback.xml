@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+
+    <!-- Proprietà iniettate da Spring/env -->
+    <property name="LOKI_ENDPOINT" value="${LOKI_ENDPOINT}" />
+    <property name="LOKI_API_KEY"  value="${LOKI_API_KEY}"  />
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name"/>
+
+    <!-- 1) Console appender con pattern colorato -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!-- %highlight colora il livello, %cyan colora il logger -->
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread]
+                %highlight(%-5level)
+                %cyan(%logger{36})
+                - %msg%n%ex{full}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- 2) File appender con rollover giornaliero -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/app.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 3) Loki appender per shipping via HTTP -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <!-- batch configuration -->
+        <batchSize>16384</batchSize>
+        <batchWaitTimeout>2000</batchWaitTimeout>
+
+        <transport class="com.github.loki4j.logback.batch.Loki4jHttpBatchTransport">
+            <appendUri>${LOKI_ENDPOINT}</appendUri>
+            <headers>
+                <Authorization>Bearer ${LOKI_API_KEY}</Authorization>
+            </headers>
+        </transport>
+
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 4) Root logger: INFO in console, file e Loki -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+        <appender-ref ref="LOKI"  />
+    </root>
+
+</configuration>

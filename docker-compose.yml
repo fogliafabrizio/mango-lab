@@ -1,16 +1,72 @@
-version: "3.8"
 services:
+  # ── Postgres (develop) ────────────────────────────────
   postgres:
     image: postgres:latest
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Mount dello script di init
       - ./db/init:/docker-entrypoint-initdb.d
+
+  # ── MinIO (S3-compatible) ─────────────────────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - minio_data:/data
+
+  # ── Loki per i log (no auth in dev) ───────────────────
+  loki:
+    image: grafana/loki:2.8.2
+    restart: unless-stopped
+    ports:
+      - "${LOKI_PORT}:3100"
+    # Load the Loki configuration file without environment variable expansion
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+      - loki_wal:/wal
+
+  # ── Promtail per leggere i log e spedirli a Loki ─────
+  promtail:
+    image: grafana/promtail:2.8.2
+    restart: unless-stopped
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/log:/var/log:ro
+
+  # ── Grafana UI per esplorare log & metriche ──────────
+  grafana:
+    image: grafana/grafana:9.5.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Editor"
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
   postgres_data:
+  minio_data:
+  loki_data:
+  loki_wal:
+  grafana_data:
