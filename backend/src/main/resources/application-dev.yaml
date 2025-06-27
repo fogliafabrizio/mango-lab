@@ -1,6 +1,6 @@
-DATABASE_HOST: localhost
-DATABASE_PORT: 5432
+DATABASE_URL: jdbc:postgresql://localhost:5432/mango-lab-dev
 DATABASE_NAME: mango-lab-dev
+DATABASE_DRIVER: org.postgresql.Driver
 
 HIBER_DDL_AUTO: create-drop
   

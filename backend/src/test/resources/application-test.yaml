@@ -1,0 +1,15 @@
+DATABASE_URL: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+DATABASE_NAME: mango-lab-dev-test
+DATABASE_DRIVER: org.h2.Driver
+DATABASE_USERNAME: sa
+DATABASE_PASSWORD:
+
+HIBER_DDL_AUTO: create-drop
+
+SPRING_JPA_SHOW_SQL: true
+
+S3_ENDPOINT: http://localhost:9000
+S3_REGION: us-east-1
+S3_ACCESS_KEY: devkey
+S3_SECRET_KEY: devsecret
+S3_BUCKET_NAME: images

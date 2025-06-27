@@ -1,17 +1,16 @@
-version: '3.8'
+version: "3.8"
 
 services:
-
   # ── Postgres dev ─────────────────────────────────────
   postgres:
-    image: postgres:latest
+    image: postgres:17
     restart: unless-stopped
     env_file: .env
     ports:
       - "${POSTGRES_PORT}:5432"
     environment:
-      POSTGRES_DB:     ${POSTGRES_DB}
-      POSTGRES_USER:   ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -31,7 +30,6 @@ services:
       - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
       - minio_data:/data
-
 
 volumes:
   postgres_data:
