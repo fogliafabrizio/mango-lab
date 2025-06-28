@@ -1,0 +1,130 @@
+name: 🛠 Develop Build & Deploy
+
+on:
+  push:
+    branches: [ develop ]
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, frontend]
+      fail-fast: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Verify ${{ matrix.service }} folder
+        run: |
+          if [[ ! -d "${{ matrix.service }}" || ! -f "${{ matrix.service }}/Dockerfile" ]]; then
+            echo "❌ ${{ matrix.service }} missing"; exit 1
+          fi
+
+      - name: Setup Java (backend)
+        if: matrix.service == 'backend'
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Setup Node.js (frontend)
+        if: matrix.service == 'frontend'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Compute dev tag
+        id: versioning
+        shell: bash
+        run: |
+          if [[ "${{ matrix.service }}" == "backend" ]]; then
+            BASE=$(mvn -q -f backend/pom.xml \
+              help:evaluate -Dexpression=project.version \
+              -DforceStdout)
+          else
+            BASE=$(grep -m1 '"version"' frontend/package.json \
+              | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"(.*)".*/\1/')
+          fi
+          BASE=${BASE%-SNAPSHOT}
+          DEV_TAG="$BASE-dev.${{ github.run_number }}"
+          echo "dev_tag=$DEV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Run tests
+        run: |
+          if [[ "${{ matrix.service }}" == "backend" ]]; then
+            mvn -f backend/pom.xml test --batch-mode
+          else
+            cd frontend
+            npm ci
+            npm test
+          fi
+
+      - name: Build frontend static
+        if: matrix.service == 'frontend'
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Package backend
+        if: matrix.service == 'backend'
+        run: mvn -f backend/pom.xml clean package -DskipTests
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build & push ${{ matrix.service }} image
+        run: |
+          SVC=${{ matrix.service }}
+          REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-$SVC
+          TAG=${{ steps.versioning.outputs.dev_tag }}
+
+          # 1) tag immutabile
+          docker build -f $SVC/Dockerfile \
+            --build-arg VERSION=$TAG \
+            -t $REPO:$TAG $SVC
+          docker push $REPO:$TAG
+
+          # 2) alias latest-dev
+          docker tag $REPO:$TAG $REPO:latest-dev
+          docker push $REPO:latest-dev
+
+  deploy:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Compute dev tag (again)
+        id: versioning
+        shell: bash
+        run: |
+          BASE=$(mvn -q -f backend/pom.xml \
+            help:evaluate -Dexpression=project.version \
+            -DforceStdout)
+          BASE=${BASE%-SNAPSHOT}
+          echo "dev_tag=$BASE-dev.${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - name: Trigger Render staging via hook
+        run: |
+          curl -X POST <RENDER_HOOK_URL>
+
+      - name: Trigger Netlify staging via hook
+        run: |
+          curl -X POST <NETLIFY_HOOK_URL>
