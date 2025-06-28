@@ -7,3 +7,5 @@ HIBER_DDL_AUTO: create-drop
 S3_ENDPOINT: http://localhost:9000
 S3_REGION: us-east-1
 S3_BUCKET_NAME: mangolab
+
+FRONTEND_DOMAIN: http://localhost:4200

@@ -13,3 +13,5 @@ S3_REGION: us-east-1
 S3_ACCESS_KEY: devkey
 S3_SECRET_KEY: devsecret
 S3_BUCKET_NAME: images
+
+FRONTEND_DOMAIN: http://localhost:4200
