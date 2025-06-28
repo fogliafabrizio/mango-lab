@@ -10,7 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebMvc
 public class WebConfiguration implements WebMvcConfigurer {
 
-    @Value("${frontend.domain}")
+    @Value("${management.endpoints.web.cors.allowed-origins}")
     private String frontendDomain;
 
     @Override
