@@ -1,6 +1,7 @@
-# .github/workflows/snapshot.yml
-name: 📦 Dynamic Snapshot Builds
+# .github/workflows/feature-snapshot.yml
+name: 📦 Feature Snapshot Build
 
+# 1) Trigger su ogni push in feature/**
 on:
   push:
     branches:
@@ -13,100 +14,104 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
+    # 2) Matrix per backend e frontend
+    strategy:
+      matrix:
+        service: [backend, frontend]
+      fail-fast: true
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      # 3) Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup Java 21
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-        cache: maven
+      # 4) Verifica che il folder e il Dockerfile esistano
+      - name: Verify ${{ matrix.service }} directory
+        run: |
+          if [[ ! -d "${{ matrix.service }}" ]]; then
+            echo "❌ Directory '${{ matrix.service }}' non trovata"
+            exit 1
+          fi
+          if [[ ! -f "${{ matrix.service }}/Dockerfile" ]]; then
+            echo "❌ ${ matrix.service }/Dockerfile mancante"
+            exit 1
+          fi
 
-    - name: Detect backend/frontend & extract versions
-      id: detect
-      run: |
-        # Backend
-        if [[ -f backend/pom.xml && -f backend/Dockerfile ]]; then
-          echo "backend_exists=true" >> $GITHUB_OUTPUT
-          BVER=$(mvn -q -f backend/pom.xml \
-            help:evaluate -Dexpression=project.version \
-            -DforceStdout)
-          echo "backend_version=$BVER" >> $GITHUB_OUTPUT
-        else
-          echo "backend_exists=false" >> $GITHUB_OUTPUT
-        fi
+      # 5) Setup toolchain specifica
+      - name: Setup Java (backend only)
+        if: matrix.service == 'backend'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
 
-        # Frontend
-        if [[ -f frontend/package.json && -f frontend/Dockerfile ]]; then
-          echo "frontend_exists=true" >> $GITHUB_OUTPUT
-          FVER=$(grep -m1 '"version"' frontend/package.json \
-            | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"(.*)".*/\1/')
-          echo "frontend_version=$FVER" >> $GITHUB_OUTPUT
-        else
-          echo "frontend_exists=false" >> $GITHUB_OUTPUT
-        fi
+      - name: Setup Node.js (frontend only)
+        if: matrix.service == 'frontend'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
-    - name: Run backend tests
-      if: ${{ steps.detect.outputs.backend_exists == 'true' }}
-      run: mvn -f backend/pom.xml test --batch-mode
+      # 6) Estrai versione
+      - name: Extract version for ${{ matrix.service }}
+        id: extract
+        shell: bash
+        run: |
+          if [[ "${{ matrix.service }}" == "backend" ]]; then
+            VER=$(mvn -q -f backend/pom.xml \
+              help:evaluate -Dexpression=project.version -DforceStdout)
+          else
+            VER=$(grep -m1 '"version"' frontend/package.json \
+              | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"(.*)".*/\1/')
+          fi
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          # short SHA
+          echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
-    - name: Package backend
-      if: ${{ steps.detect.outputs.backend_exists == 'true' }}
-      run: mvn -f backend/pom.xml clean package -DskipTests
+      # 7) Test
+      - name: Run tests for ${{ matrix.service }}
+        run: |
+          if [[ "${{ matrix.service }}" == "backend" ]]; then
+            mvn -f backend/pom.xml test --batch-mode
+          else
+            cd frontend
+            npm ci
+            npm test
+          fi
 
-    - name: Run frontend tests
-      if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
-      run: |
-        cd frontend
-        npm ci
-        npm test
+      # 8) Package (backend only – frontend non richiede package separato)
+      - name: Package backend
+        if: matrix.service == 'backend'
+        run: mvn -f backend/pom.xml clean package -DskipTests
 
-    - name: Login to Docker Hub
-      if: ${{ steps.detect.outputs.backend_exists == 'true' || steps.detect.outputs.frontend_exists == 'true' }}
-      uses: docker/login-action@v2
-      with:
-        username: ${{ env.DOCKERHUB_USERNAME }}
-        password: ${{ env.DOCKERHUB_TOKEN }}
+      # 9) Login Docker
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
-    # ------------------
-    # Build & Push Backend
-    # ------------------
+      # 10) Build & push
+      - name: Build & push ${{ matrix.service }} image
+        run: |
+          SERVICE=${{ matrix.service }}
+          REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-$SERVICE
+          V=${{ steps.extract.outputs.version }}
+          S=${{ steps.extract.outputs.sha }}
 
-    - name: Build & push backend image
-      if: ${{ steps.detect.outputs.backend_exists == 'true' }}
-      run: |
-        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-backend
-        V=${{ steps.detect.outputs.backend_version }}
-        # Prendiamo i primi 7 caratteri del commit SHA
-        SHA_SHORT=${GITHUB_SHA::7}
+          # tag snapshot immutabile
+          SNAP_TAG=${V%-SNAPSHOT}-SNAPSHOT-${S}
 
-        # 1) Tag snapshot su SHA
-        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
+          docker build \
+            -f $SERVICE/Dockerfile \
+            --build-arg VERSION=$SNAP_TAG \
+            -t $REPO:$SNAP_TAG \
+            $SERVICE
 
-        docker build -f backend/Dockerfile -t $REPO:$TAG backend
-        docker push  $REPO:$TAG
+          docker push $REPO:$SNAP_TAG
 
-        # 2) aggiorniamo sempre l’alias "latest-snapshot"
-        docker tag  $REPO:$TAG $REPO:latest-snapshot
-        docker push $REPO:latest-snapshot
-
-    # ------------------
-    # Build & Push Frontend
-    # ------------------
-
-    - name: Build & push frontend image
-      if: ${{ steps.detect.outputs.frontend_exists == 'true' }}
-      run: |
-        REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-frontend
-        V=${{ steps.detect.outputs.frontend_version }}
-        SHA_SHORT=${GITHUB_SHA::7}
-
-        TAG=${V%-SNAPSHOT}-SNAPSHOT-${SHA_SHORT}
-
-        docker build -f frontend/Dockerfile -t $REPO:$TAG frontend
-        docker push  $REPO:$TAG
-
-        docker tag  $REPO:$TAG $REPO:latest-snapshot
-        docker push $REPO:latest-snapshot
+          # alias latest-snapshot
+          docker tag $REPO:$SNAP_TAG $REPO:latest-snapshot
+          docker push $REPO:latest-snapshot
