@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 RUN npm install && npm run build -- --configuration=production
 
-# Fase 2: serve con Nginx
 FROM nginx:alpine
-COPY --from=builder /app/dist/mangolab-frontend/ /usr/share/nginx/html/
+# copy your Angular build out of “browser”
+COPY --from=builder /app/dist/mangolab-frontend/browser/ /usr/share/nginx/html/
 COPY default.conf /etc/nginx/conf.d/default.conf
