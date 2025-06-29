@@ -1,11 +1,11 @@
 export const environment = {
   production: true,
   apiUrls: {
-    backend: 'https://mango-lab.onrender.com/actuator/health',
-    database: 'https://mango-lab.onrender.com/test/status/db',
-    storage: 'https://mango-lab.onrender.com/test/status/storage',
-    insert: 'https://mango-lab.onrender.com/test/db/insert',
-    upload: 'https://mango-lab.onrender.com/test/storage/upload',
-    list: 'https://mango-lab.onrender.com/test/storage/list',
+    backend: 'http://localhost:8080/actuator/health',
+    database: 'http://localhost:8080/test/status/db',
+    storage: 'http://localhost:8080/test/status/storage',
+    insert: 'http://localhost:8080/test/db/insert',
+    upload: 'http://localhost:8080/test/storage/upload',
+    list: 'http://localhost:8080/test/storage/list',
   },
 };
