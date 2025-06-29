@@ -12,7 +12,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: runtime su Debian (glibc) invece di Alpine
-FROM eclipse-temurin:21-jdk              # variante Debian-based
+FROM eclipse-temurin:21-jdk AS runtime
 WORKDIR /app
 
 # Installa i certificati di sistema
