@@ -1,0 +1,11 @@
+DATABASE_URL: jdbc:postgresql://localhost:5432/mango-lab-dev
+DATABASE_NAME: mango-lab-dev
+DATABASE_DRIVER: org.postgresql.Driver
+
+HIBER_DDL_AUTO: create-drop
+  
+S3_ENDPOINT: http://localhost:9000
+S3_REGION: us-east-1
+S3_BUCKET_NAME: mangolab
+
+FRONTEND_DOMAIN: http://localhost:4200

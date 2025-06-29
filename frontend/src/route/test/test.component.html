@@ -1,0 +1,25 @@
+<div class="status-container">
+  <h2>Status connessioni:</h2>
+  <div>
+    <span>Backend: </span
+    ><span [class.green]="backendStatus" [class.red]="!backendStatus">●</span>
+  </div>
+  <div>
+    <span>Database: </span
+    ><span [class.green]="databaseStatus" [class.red]="!databaseStatus">●</span>
+  </div>
+  <div>
+    <span>Storage: </span
+    ><span [class.green]="storageStatus" [class.red]="!storageStatus">●</span>
+  </div>
+</div>
+
+<hr />
+
+<div class="actions">
+  <h2>Azioni di test:</h2>
+  <button (click)="inserisciNelDatabase()">➕ Inserisci record</button>
+  <input type="file" (change)="uploadFile($event)" />
+  <button (click)="eliminaFile()">🗑️ Elimina file di test</button>
+  <button (click)="listaFile()">📂 Lista file</button>
+</div>

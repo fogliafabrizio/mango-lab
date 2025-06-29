@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+
+    <!-- ===== Proprietà configurabili via ENV o application.properties ===== -->
+    <property name="LOG_PATH"               value="${LOG_PATH:-logs/app.log}"/>
+    <property name="LOG_ARCHIVE_PATTERN"   value="${LOG_ARCHIVE_PATTERN:-logs/app.%d{yyyy-MM-dd}.log.gz}"/>
+    <property name="LOG_MAX_HISTORY"       value="${LOG_MAX_HISTORY:-14}"/>
+    <property name="LOG_TOTAL_SIZE_CAP"    value="${LOG_TOTAL_SIZE_CAP:-500MB}"/>
+    <property name="LOG_PATTERN"           value="${LOG_PATTERN:-%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n}"/>
+
+    <!-- ===== APPENDER CONSOLE (colorato) – sempre attivo ===== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread]
+                %highlight(%-5level)
+                %cyan(%logger{36})
+                - %msg%n%ex{full}
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== APPENDER FILE rolling giornaliero – usato in dev e prod ===== -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_ARCHIVE_PATTERN}</fileNamePattern>
+            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== DEV profile: console + file plain-text ===== -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- ===== DEV profile: console + file plain-text ===== -->
+    <springProfile name="default">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+<!--    &lt;!&ndash; ===== PROD profile: file JSON + (opzionale) async ===== &ndash;&gt;-->
+<!--    <springProfile name="prod">-->
+<!--        &lt;!&ndash; Appender JSON per integrazione con collector esterni &ndash;&gt;-->
+<!--        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--            <file>${LOG_PATH}.json</file>-->
+<!--            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+<!--                <fileNamePattern>${LOG_PATH}.%d{yyyy-MM-dd}.json.gz</fileNamePattern>-->
+<!--                <maxHistory>${LOG_MAX_HISTORY}</maxHistory>-->
+<!--                <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>-->
+<!--            </rollingPolicy>-->
+<!--            &lt;!&ndash; Richiede la dipendenza net.logstash.logback:logstash-logback-encoder &ndash;&gt;-->
+<!--            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">-->
+<!--                <providers>-->
+<!--                    <timestamp>-->
+<!--                        <timeZone>UTC</timeZone>-->
+<!--                    </timestamp>-->
+<!--                    <logLevel/>-->
+<!--                    <threadName/>-->
+<!--                    <loggerName/>-->
+<!--                    <message/>-->
+<!--                    <stackTrace/>-->
+<!--                    <mdc/>-->
+<!--                </providers>-->
+<!--            </encoder>-->
+<!--        </appender>-->
+
+<!--        &lt;!&ndash; Wrapper asincrono (riduce impatto I/O) &ndash;&gt;-->
+<!--        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">-->
+<!--            <appender-ref ref="JSON_FILE"/>-->
+<!--            <queueSize>5000</queueSize>-->
+<!--            <discardingThreshold>0</discardingThreshold>-->
+<!--            <neverBlock>true</neverBlock>-->
+<!--        </appender>-->
+
+<!--        <root level="INFO">-->
+<!--            &lt;!&ndash; In prod NON mandiamo in console colorata (se preferisci puoi abilitarla) &ndash;&gt;-->
+<!--            <appender-ref ref="ASYNC_JSON"/>-->
+<!--        </root>-->
+<!--    </springProfile>-->
+
+</configuration>
