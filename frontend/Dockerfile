@@ -15,7 +15,8 @@
     ARG NG_BUILD_CONFIG=production
     
     # 4) build parametrico
-    RUN npm run build -- --configuration=$NG_BUILD_CONFIG
+    RUN npx ng build --configuration=$NG_BUILD_CONFIG
+
     
     # -----------------------------------
     # Stage 2: serve con Nginx pulito
