@@ -87,17 +87,21 @@ jobs:
 
       - name: Build & push ${{ matrix.service }} image
         run: |
-          SVC=${{ matrix.service }}
-          REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-$SVC
+          SERVICE=${{ matrix.service }}
+          REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-$SERVICE
           TAG=${{ steps.versioning.outputs.dev_tag }}
 
-          # 1) tag immutabile
-          docker build -f $SVC/Dockerfile \
+          # 1) build e tag immagine
+          docker build -f $SERVICE/Dockerfile \
             --build-arg NG_BUILD_CONFIG=staging \
             --build-arg VERSION=$TAG \
+            -t $REPO:$TAG \
+            $SERVICE
+
+          # 2) push del tag specifico
           docker push $REPO:$TAG
 
-          # 2) alias latest-dev
+          # 3) alias latest-dev
           docker tag $REPO:$TAG $REPO:latest-dev
           docker push $REPO:latest-dev
 
