@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -8,52 +9,31 @@ import { Observable } from 'rxjs';
 export class TestService {
   constructor(private _http: HttpClient) {}
 
-  private apiUrls = {
-    dev: {
-      backend: 'http://localhost:8080/actuator/health',
-      database: 'http://localhost:8080/test/status/db',
-      storage: 'http://localhost:8080/test/status/storage',
-    },
-    staging: {
-      backend: 'https://staging-api.mangolab.com/actuator/health',
-      database: 'https://staging-api.mangolab.com/status/db',
-      storage: 'https://staging-api.mangolab.com/status/storage',
-    },
-    prod: {
-      backend: 'https://api.mangolab.com/actuator/health',
-      database: 'https://api.mangolab.com/status/db',
-      storage: 'https://api.mangolab.com/status/storage',
-    },
-  };
-
-  private currentEnv: 'dev' | 'staging' | 'prod' = 'dev';
+  private urls = environment.apiUrls;
 
   checkBackend(): Observable<any> {
-    return this._http.get(this.apiUrls[this.currentEnv].backend);
+    return this._http.get(this.urls.backend);
   }
 
   checkDatabase(): Observable<any> {
-    return this._http.get(this.apiUrls[this.currentEnv].database);
+    return this._http.get(this.urls.database);
   }
 
   checkStorage(): Observable<any> {
-    return this._http.get(this.apiUrls[this.currentEnv].storage);
+    return this._http.get(this.urls.storage);
   }
 
   inserisciNelDatabase(): Observable<any> {
-    return this._http.post('http://localhost:8080/test/db/insert', {});
+    return this._http.post(this.urls.insert, {});
   }
 
   uploadFile(file: File): Observable<any> {
     const formData = new FormData();
     formData.append('file', file, file.name);
-    return this._http.post(
-      'http://localhost:8080/test/storage/upload',
-      formData
-    );
+    return this._http.post(this.urls.upload, formData);
   }
 
   listaFile(): Observable<any> {
-    return this._http.get('http://localhost:8080/test/storage/list');
+    return this._http.get(this.urls.list);
   }
 }
