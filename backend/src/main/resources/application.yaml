@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      dialect: org.hibernate.dialect.${DATABASE_TYPE}Dialect
+      dialect: org.hibernate.dialect.PostgreSQLDialect
       ddl-auto: ${HIBER_DDL_AUTO:update}
     show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
@@ -56,4 +56,4 @@ application:
     total-size-cap: ${LOG_TOTAL_SIZE_CAP:1GB}
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:8080}
