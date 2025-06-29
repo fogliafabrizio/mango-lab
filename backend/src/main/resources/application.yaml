@@ -56,4 +56,5 @@ application:
     total-size-cap: ${LOG_TOTAL_SIZE_CAP:1GB}
 
 server:
-  port: ${PORT:8080}
+  port: ${PORT}           # rimuovi ":8080" per forzare l’uso di PORT
+  address: 0.0.0.0       # bind esplicito a tutte le interfacce
