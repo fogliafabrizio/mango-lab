@@ -105,10 +105,10 @@ jobs:
           # tag snapshot immutabile
           SNAP_TAG=${V%-SNAPSHOT}-SNAPSHOT-${S}
 
-          docker build \
-            -f $SERVICE/Dockerfile \
+          docker build -f $SERVICE/Dockerfile \
             --build-arg NG_BUILD_CONFIG=development \
             --build-arg VERSION=$SNAP_TAG \
+            $SERVICE
 
           docker push $REPO:$SNAP_TAG
 
