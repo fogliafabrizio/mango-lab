@@ -15,15 +15,18 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
 
-# installa i certificati di sistema per SSL (per PostgreSQL over SSL)
+# 1) Installa i certificati di sistema
 RUN apk add --no-cache ca-certificates
 
-# Copia il jar compilato
-COPY --from=builder /workspace/target/*.jar app.jar
+# 2) Copia il tuo cert di Supabase nel trust store
+COPY certs/supabase-ca.crt /usr/local/share/ca-certificates/par-supabase.crt
+RUN update-ca-certificates
 
-# Se necessario: configura user non-root (opzionale)
-# RUN addgroup -S app && adduser -S app -G app
-# USER app
+# 3) Forza Java a usare IPv4 (evitiamo il tentativo IPv6 e il "Network unreachable")
+ENV JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true"
+
+# 4) Copia il JAR compilato dallo stage builder
+COPY --from=builder /workspace/target/*.jar app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.jar"]
