@@ -94,24 +94,29 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
-      # 10) Build & push
+        # 10) Build & push
       - name: Build & push ${{ matrix.service }} image
         run: |
           SERVICE=${{ matrix.service }}
           REPO=${{ env.DOCKERHUB_USERNAME }}/mangolab-$SERVICE
           V=${{ steps.extract.outputs.version }}
           S=${{ steps.extract.outputs.sha }}
-
+    
           # tag snapshot immutabile
           SNAP_TAG=${V%-SNAPSHOT}-SNAPSHOT-${S}
-
-          docker build -f $SERVICE/Dockerfile \
+    
+          # 1) build e tagga l’immagine
+          docker build \
+            -f $SERVICE/Dockerfile \
             --build-arg NG_BUILD_CONFIG=development \
             --build-arg VERSION=$SNAP_TAG \
+            -t $REPO:$SNAP_TAG \
             $SERVICE
-
+    
+          # 2) push del tag specifico
           docker push $REPO:$SNAP_TAG
-
-          # alias latest-snapshot
+    
+          # 3) alias latest-snapshot
           docker tag $REPO:$SNAP_TAG $REPO:latest-snapshot
           docker push $REPO:latest-snapshot
+
