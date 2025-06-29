@@ -23,4 +23,4 @@ COPY --from=builder /workspace/target/*.jar app.jar
 # USER app
 
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
