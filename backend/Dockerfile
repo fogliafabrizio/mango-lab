@@ -15,6 +15,9 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
 
+# installa i certificati di sistema per SSL (per PostgreSQL over SSL)
+RUN apk add --no-cache ca-certificates
+
 # Copia il jar compilato
 COPY --from=builder /workspace/target/*.jar app.jar
 
