@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+## Environment files
+application-par.yaml
+application-prod.yaml
