@@ -31,4 +31,4 @@ COPY --from=builder /workspace/target/*.jar app.jar
 EXPOSE 8080
 
 # Avvio in modalità debug (opzionale)
-ENTRYPOINT ["java","-jar","app.jar","--debug", "--server.address=0.0.0.0", "--server.port=$PORT"]
+ENTRYPOINT ["java","-jar","app.jar","--debug"]
