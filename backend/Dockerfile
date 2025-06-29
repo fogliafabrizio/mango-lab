@@ -19,7 +19,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates
 
 # 2) Copia il tuo cert di Supabase nel trust store
-COPY certs/supabase-ca.crt /usr/local/share/ca-certificates/par-supabase.crt
+COPY certs/supabase-ca-par.crt /usr/local/share/ca-certificates/supabase-ca.crt
 RUN update-ca-certificates
 
 # 3) Forza Java a usare IPv4 (evitiamo il tentativo IPv6 e il "Network unreachable")
