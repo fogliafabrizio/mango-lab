@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
 
-  # ── MinIO dev (S3‐compat) ─────────────────────────────W
+  # ── MinIO dev (S3‐compat) ─────────────────────────────
   minio:
     image: minio/minio:latest
     restart: unless-stopped
