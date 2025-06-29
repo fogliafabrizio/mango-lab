@@ -2,11 +2,11 @@ name: 🛠 Develop Build & Deploy
 
 on:
   push:
-    branches: [ develop ]
+    branches: [develop]
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
 jobs:
   build-and-push:
@@ -127,8 +127,8 @@ jobs:
 
       - name: Trigger Render staging via hook
         run: |
-          curl -X POST <RENDER_HOOK_URL>
+          curl -X POST "${{ secrets.RENDER_HOOK_URL }}"
 
       - name: Trigger Netlify staging via hook
         run: |
-          curl -X POST <NETLIFY_HOOK_URL>
+          curl -X POST "${{ secrets.NETLIFY_HOOK_URL }}"
