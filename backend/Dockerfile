@@ -11,7 +11,7 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# Stage 2: runtime su Debian (glibc) invece di Alpine
+# Stage 2: runtime su Debian (glibc)
 FROM eclipse-temurin:21-jdk AS runtime
 WORKDIR /app
 
@@ -27,5 +27,8 @@ ENV JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true"
 # Copia il JAR compilato
 COPY --from=builder /workspace/target/*.jar app.jar
 
-EXPOSE 8080   # Render scannerà la porta interna attiva
-ENTRYPOINT ["java","-jar","app.jar", "--debug"]
+# Espone la porta per HTTP
+EXPOSE 8080
+
+# Avvio in modalità debug (opzionale)
+ENTRYPOINT ["java","-jar","app.jar","--debug"]
