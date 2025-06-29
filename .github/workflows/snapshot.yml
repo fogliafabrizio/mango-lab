@@ -5,11 +5,11 @@ name: 📦 Feature Snapshot Build
 on:
   push:
     branches:
-      - 'feature/**'
+      - "feature/**"
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
 jobs:
   build-and-push:
@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
           if [[ ! -f "${{ matrix.service }}/Dockerfile" ]]; then
-            echo "❌ ${ matrix.service }/Dockerfile mancante"
+            echo "❌ ${{ matrix.service }}/Dockerfile mancante"
             exit 1
           fi
 
@@ -43,16 +43,16 @@ jobs:
         if: matrix.service == 'backend'
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: "temurin"
+          java-version: "21"
           cache: maven
 
       - name: Setup Node.js (frontend only)
         if: matrix.service == 'frontend'
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       # 6) Estrai versione
@@ -107,9 +107,8 @@ jobs:
 
           docker build \
             -f $SERVICE/Dockerfile \
+            --build-arg NG_BUILD_CONFIG=development \
             --build-arg VERSION=$SNAP_TAG \
-            -t $REPO:$SNAP_TAG \
-            $SERVICE
 
           docker push $REPO:$SNAP_TAG
 

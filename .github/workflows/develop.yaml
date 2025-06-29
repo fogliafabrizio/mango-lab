@@ -68,12 +68,12 @@ jobs:
             npm test
           fi
 
-      - name: Build frontend static
-        if: matrix.service == 'frontend'
-        run: |
-          cd frontend
-          npm ci
-          npm run build:stg
+      #- name: Build frontend static
+      #  if: matrix.service == 'frontend'
+      #  run: |
+      #    cd frontend
+      #    npm ci
+      #    npm run build:stg
 
       - name: Package backend
         if: matrix.service == 'backend'
@@ -93,8 +93,8 @@ jobs:
 
           # 1) tag immutabile
           docker build -f $SVC/Dockerfile \
+            --build-arg NG_BUILD_CONFIG=staging \
             --build-arg VERSION=$TAG \
-            -t $REPO:$TAG $SVC
           docker push $REPO:$TAG
 
           # 2) alias latest-dev
