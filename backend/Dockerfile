@@ -11,22 +11,21 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
-# Stage 2: runtime
-FROM eclipse-temurin:21-jdk-alpine
+# Stage 2: runtime su Debian (glibc) invece di Alpine
+FROM eclipse-temurin:21-jdk              # variante Debian-based
 WORKDIR /app
 
-# 1) Installa i certificati di sistema
-RUN apk add --no-cache ca-certificates
+# Installa i certificati di sistema
+RUN apt-get update \
+ && apt-get install -y ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-# 2) Copia il tuo cert di Supabase nel trust store
-COPY certs/supabase-ca-par.crt /usr/local/share/ca-certificates/supabase-ca.crt
-RUN update-ca-certificates
-
-# 3) Forza Java a usare IPv4 (evitiamo il tentativo IPv6 e il "Network unreachable")
+# Forza Java su IPv4 (opzionale)
 ENV JAVA_TOOL_OPTIONS="-Djava.net.preferIPv4Stack=true"
 
-# 4) Copia il JAR compilato dallo stage builder
+# Copia il JAR compilato
 COPY --from=builder /workspace/target/*.jar app.jar
 
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+EXPOSE 8080   # Render scannerà la porta interna attiva
+ENTRYPOINT ["java","-jar","app.jar", "--debug"]
